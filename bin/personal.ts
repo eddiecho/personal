@@ -22,9 +22,7 @@ import * as Secrets from '../lib/secrets';
       LambdaCode: personalStack.lambdaCode,
     });
   } catch (error) {
-    if (error instanceof AWSError) {
-      throw error;
-    }
+    throw error;
   }
 
   app.synth();
