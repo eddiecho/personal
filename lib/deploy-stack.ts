@@ -16,7 +16,7 @@ export class DeployStack extends Stack {
 
     const cdkBuild = new CodeBuild.PipelineProject(this, 'CdkBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
-        version: '1.0',
+        version: '0.2',
         phases: {
           install: {
             commands: 'npm install',
@@ -36,7 +36,7 @@ export class DeployStack extends Stack {
     });
     const lambdaBuild = new CodeBuild.PipelineProject(this, 'LambdaBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
-        version: '1.0',
+        version: '0.2',
         phases: {
           install: {
             commands: ['cd lambda', 'npm install'],
