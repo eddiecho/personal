@@ -104,17 +104,17 @@ export class DeployStack extends Stack {
       encryptionKey: artifactBucketKey,
       lifecycleRules: [
         {
-          enabled: false,
+          enabled: true,
           expiration: Duration.days(7),
           prefix: 'CdkBuild',
         },
         {
-          enabled: false,
+          enabled: true,
           expiration: Duration.days(7),
           prefix: 'Lambda',
         },
         {
-          enabled: false,
+          enabled: true,
           expiration: Duration.days(7),
           prefix: 'Artifact',
         },
