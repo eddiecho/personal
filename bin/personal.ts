@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as Cdk from '@aws-cdk/core';
-import { AWSError } from 'aws-sdk';
 import * as SecretsManager from 'aws-sdk/clients/secretsmanager';
 
 import { PersonalStack } from '../lib/personal-stack';

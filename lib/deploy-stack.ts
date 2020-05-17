@@ -23,7 +23,7 @@ export class DeployStack extends Stack {
             commands: 'npm install',
           },
           build: {
-            commands: ['npm run build', 'npm run cdk synth -- -o dist'],
+            commands: ['npm run release', 'npm run cdk synth -- -o dist'],
           },
         },
         artifacts: {

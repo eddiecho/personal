@@ -1,22 +1,12 @@
-import {
-  expect as expectCDK,
-  matchTemplate,
-  MatchStyle,
-} from '@aws-cdk/assert';
+import { expect, haveResource, MatchStyle } from '@aws-cdk/assert';
 import * as cdk from '@aws-cdk/core';
 import * as Personal from '../lib/personal-stack';
 
-test('Empty Stack', () => {
-  const app = new cdk.App();
-  // WHEN
-  const stack = new Personal.PersonalStack(app, 'MyTestStack');
-  // THEN
-  expectCDK(stack).to(
-    matchTemplate(
-      {
-        Resources: {},
-      },
-      MatchStyle.EXACT
-    )
-  );
+describe('Personal Stack', () => {
+  test('Empty Stack', () => {
+    const app = new cdk.App();
+
+    const stack = new Personal.PersonalStack(app, 'MyTestStack');
+    expect(stack).to(haveResource('AWS::Lambda::Function'));
+  });
 });

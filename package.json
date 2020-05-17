@@ -6,6 +6,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "release": "npm run test; npm run build",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
