@@ -15,6 +15,23 @@ export class DeployStack extends Stack {
   constructor(app: App, id: string, props: DeployStackProps) {
     super(app, id, props);
 
+    const testBuild = new CodeBuild.PipelineProject(this, 'TestBuild', {
+      buildSpec: CodeBuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            commands: 'npm install',
+          },
+          test: {
+            commands: 'npm run test',
+          },
+        },
+      }),
+      environment: {
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_2_0,
+      },
+    });
+
     const cdkBuild = new CodeBuild.PipelineProject(this, 'CdkBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
@@ -23,10 +40,7 @@ export class DeployStack extends Stack {
             commands: 'npm install',
           },
           build: {
-            commands: ['npm run release', 'npm run cdk synth -- -o dist'],
-          },
-          postbuild: {
-            commands: ['npm run cdk deploy DeployStack'],
+            commands: ['npm run build', 'npm run cdk synth -- -o dist'],
           },
         },
         artifacts: {
@@ -99,6 +113,16 @@ export class DeployStack extends Stack {
               branch: 'master',
               owner: 'eddiecho',
               oauthToken: sourceAuth,
+            }),
+          ],
+        },
+        {
+          stageName: 'Test',
+          actions: [
+            new CodePipelineActions.CodeBuildAction({
+              actionName: 'Test',
+              project: testBuild,
+              input: sourceOutput,
             }),
           ],
         },
