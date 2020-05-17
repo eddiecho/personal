@@ -14,18 +14,18 @@ import * as Secrets from '../lib/secrets';
 
   try {
     const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret(
-    'GithubPersonalAccessToken'
+      'GithubPersonalAccessToken'
     );
+    new DeployStack(app, 'DeployStack', {
+      // overly strict aliasing
+      GithubSecretArn: githubSecret.ARN as string,
+      LambdaCode: personalStack.lambdaCode,
+    });
   } catch (error) {
-      if (error instanceof AWSError) {
-        throw error;
-      }
+    if (error instanceof AWSError) {
+      throw error;
+    }
   }
-  new DeployStack(app, 'DeployStack', {
-    // overly strict aliasing
-    GithubSecretArn: githubSecret.ARN as string,
-    LambdaCode: personalStack.lambdaCode,
-  });
 
   app.synth();
 })();

@@ -1,9 +1,10 @@
 import * as CodeBuild from '@aws-cdk/aws-codebuild';
 import * as CodePipeline from '@aws-cdk/aws-codepipeline';
 import * as CodePipelineActions from '@aws-cdk/aws-codepipeline-actions';
+import * as Iam from '@aws-cdk/aws-iam';
 import * as Lambda from '@aws-cdk/aws-lambda';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
-import { App, Stack, StackProps } from '@aws-cdk/core';
+import { App, Arn, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
@@ -34,6 +35,22 @@ export class DeployStack extends Stack {
         buildImage: CodeBuild.LinuxBuildImage.STANDARD_2_0,
       },
     });
+
+    const githubSecretArn = Arn.format(
+      {
+        resource: 'secret',
+        service: 'secretsmanager',
+        resourceName: 'GithubPersonalAccessToken*',
+      },
+      this
+    );
+    const additionalCodeBuildPerms = new Iam.PolicyStatement({
+      actions: ['secretsmanager:DescribeSecret'],
+      effect: Iam.Effect.ALLOW,
+      resources: [githubSecretArn],
+    });
+    cdkBuild.addToRolePolicy(additionalCodeBuildPerms);
+
     const lambdaBuild = new CodeBuild.PipelineProject(this, 'LambdaBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
