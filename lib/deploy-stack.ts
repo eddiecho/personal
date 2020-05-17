@@ -25,6 +25,9 @@ export class DeployStack extends Stack {
           build: {
             commands: ['npm run release', 'npm run cdk synth -- -o dist'],
           },
+          postbuild: {
+            commands: ['npm run cdk deploy DeployStack'],
+          },
         },
         artifacts: {
           'base-directory': 'dist',
@@ -113,6 +116,17 @@ export class DeployStack extends Stack {
               project: cdkBuild,
               input: sourceOutput,
               outputs: [cdkBuildOutput],
+            }),
+          ],
+        },
+        {
+          stageName: 'Self-Mutate',
+          actions: [
+            new CodePipelineActions.CloudFormationCreateUpdateStackAction({
+              actionName: 'CodePipelineDeploy',
+              templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
+              stackName: 'DeployStack',
+              adminPermissions: true,
             }),
           ],
         },
