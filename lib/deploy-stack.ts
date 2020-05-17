@@ -103,7 +103,9 @@ export class DeployStack extends Stack {
           actions: [
             new CodePipelineActions.CloudFormationCreateUpdateStackAction({
               actionName: 'LambdaCfnDeploy',
-              templatePath: cdkBuildOutput.atPath('PersonalStack.template.json'),
+              templatePath: cdkBuildOutput.atPath(
+                'PersonalStack.template.json'
+              ),
               stackName: 'PersonalStack',
               adminPermissions: true,
               parameterOverrides: {
