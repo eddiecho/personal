@@ -2,6 +2,7 @@ import * as CodeBuild from '@aws-cdk/aws-codebuild';
 import * as CodePipeline from '@aws-cdk/aws-codepipeline';
 import * as CodePipelineActions from '@aws-cdk/aws-codepipeline-actions';
 import * as Iam from '@aws-cdk/aws-iam';
+import * as Kms from '@aws-cdk/aws-kms';
 import * as Lambda from '@aws-cdk/aws-lambda';
 import * as S3 from '@aws-cdk/aws-s3';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
@@ -16,6 +17,16 @@ export class DeployStack extends Stack {
   constructor(app: App, id: string, props: DeployStackProps) {
     super(app, id, props);
 
+    const artifactBucket = this.renderArtifactBucket();
+
+    new CodePipeline.Pipeline(this, 'Pipeline', {
+      artifactBucket,
+      restartExecutionOnUpdate: true,
+      stages: this.renderPipelineStages(props),
+    });
+  }
+
+  private renderCdkBuild = (): CodeBuild.PipelineProject => {
     const cdkBuild = new CodeBuild.PipelineProject(this, 'CdkBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
@@ -56,7 +67,11 @@ export class DeployStack extends Stack {
     });
     cdkBuild.addToRolePolicy(additionalCodeBuildPerms);
 
-    const lambdaBuild = new CodeBuild.PipelineProject(this, 'LambdaBuild', {
+    return cdkBuild;
+  };
+
+  private renderLambdaBuild = (): CodeBuild.PipelineProject => {
+    return new CodeBuild.PipelineProject(this, 'LambdaBuild', {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
@@ -76,19 +91,17 @@ export class DeployStack extends Stack {
         buildImage: CodeBuild.LinuxBuildImage.STANDARD_2_0,
       },
     });
+  };
 
-    const sourceAuth = SecretsManager.Secret.fromSecretAttributes(
-      this,
-      'GithubSecret',
-      {
-        secretArn: props.GithubSecretArn,
-      }
-    ).secretValueFromJson('OAuth');
+  private renderArtifactBucket = (): S3.Bucket => {
+    const artifactBucketKey = new Kms.Key(this, 'ArtifactEncryptionBucketKey', {
+      enableKeyRotation: true,
+    });
 
-    const sourceOutput = new CodePipeline.Artifact();
-    const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
-    const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
-    const artifactBucket = new S3.Bucket(this, 'ArtifactBucket', {
+    return new S3.Bucket(this, 'ArtifactBucket', {
+      blockPublicAccess: S3.BlockPublicAccess.BLOCK_ALL,
+      encryption: S3.BucketEncryption.KMS,
+      encryptionKey: artifactBucketKey,
       lifecycleRules: [
         {
           enabled: false,
@@ -107,71 +120,83 @@ export class DeployStack extends Stack {
         },
       ],
     });
+  };
 
-    new CodePipeline.Pipeline(this, 'Pipeline', {
-      artifactBucket,
-      restartExecutionOnUpdate: true,
-      stages: [
-        {
-          stageName: 'Source',
-          actions: [
-            new CodePipelineActions.GitHubSourceAction({
-              actionName: 'GithubSource',
-              output: sourceOutput,
-              repo: 'personal',
-              branch: 'master',
-              owner: 'eddiecho',
-              oauthToken: sourceAuth,
-            }),
-          ],
-        },
-        {
-          stageName: 'Build',
-          actions: [
-            new CodePipelineActions.CodeBuildAction({
-              actionName: 'LambdaBuild',
-              project: lambdaBuild,
-              input: sourceOutput,
-              outputs: [lambdaBuildOutput],
-            }),
-            new CodePipelineActions.CodeBuildAction({
-              actionName: 'CDKBuild',
-              project: cdkBuild,
-              input: sourceOutput,
-              outputs: [cdkBuildOutput],
-            }),
-          ],
-        },
-        {
-          stageName: 'Deploy',
-          actions: [
-            new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-              actionName: 'LambdaCfnDeploy',
-              templatePath: cdkBuildOutput.atPath(
-                'PersonalStack.template.json'
-              ),
-              stackName: 'PersonalStack',
-              adminPermissions: true,
-              parameterOverrides: {
-                ...props.LambdaCode.assign(lambdaBuildOutput.s3Location),
-              },
-              extraInputs: [lambdaBuildOutput],
-            }),
-          ],
-        },
-        {
-          // self mutation prevents changes from being pushed forward if pipeline definition changes
-          stageName: 'Self-Mutate',
-          actions: [
-            new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-              actionName: 'CodePipelineDeploy',
-              templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
-              stackName: 'DeployStack',
-              adminPermissions: true,
-            }),
-          ],
-        },
-      ],
-    });
-  }
+  private renderPipelineStages = (
+    props: DeployStackProps
+  ): CodePipeline.StageProps[] => {
+    const sourceAuth = SecretsManager.Secret.fromSecretAttributes(
+      this,
+      'GithubSecret',
+      {
+        secretArn: props.GithubSecretArn,
+      }
+    ).secretValueFromJson('OAuth');
+    const cdkBuild = this.renderCdkBuild();
+    const lambdaBuild = this.renderLambdaBuild();
+
+    const sourceOutput = new CodePipeline.Artifact();
+    const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
+    const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
+
+    return [
+      {
+        stageName: 'Source',
+        actions: [
+          new CodePipelineActions.GitHubSourceAction({
+            actionName: 'GithubSource',
+            output: sourceOutput,
+            repo: 'personal',
+            branch: 'master',
+            owner: 'eddiecho',
+            oauthToken: sourceAuth,
+          }),
+        ],
+      },
+      {
+        stageName: 'Build',
+        actions: [
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'LambdaBuild',
+            project: lambdaBuild,
+            input: sourceOutput,
+            outputs: [lambdaBuildOutput],
+          }),
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'CDKBuild',
+            project: cdkBuild,
+            input: sourceOutput,
+            outputs: [cdkBuildOutput],
+          }),
+        ],
+      },
+      {
+        stageName: 'Deploy',
+        actions: [
+          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
+            actionName: 'LambdaCfnDeploy',
+            templatePath: cdkBuildOutput.atPath('PersonalStack.template.json'),
+            stackName: 'PersonalStack',
+            adminPermissions: true,
+            parameterOverrides: {
+              ...props.LambdaCode.assign(lambdaBuildOutput.s3Location),
+            },
+            extraInputs: [lambdaBuildOutput],
+          }),
+        ],
+      },
+      {
+        // self mutation prevents changes from being pushed forward if pipeline definition changes
+        stageName: 'Self-Mutate',
+        actions: [
+          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
+            actionName: 'CodePipelineDeploy',
+            templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
+            stackName: 'DeployStack',
+            adminPermissions: true,
+          }),
+        ],
+      },
+    ];
+  };
 }
