@@ -39,13 +39,16 @@ export class DeployStack extends Stack {
           install: {
             commands: 'npm install',
           },
+          pre_build: {
+            commands: 'npm run test',
+          },
           build: {
             commands: ['npm run build', 'npm run cdk synth -- -o dist'],
           },
         },
         artifacts: {
           'base-directory': 'dist',
-          files: ['PersonalStack.template.json'],
+          files: ['PersonalStack.template.json', 'DeployStack.template.json'],
         },
       }),
       environment: {
