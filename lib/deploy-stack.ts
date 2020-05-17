@@ -41,6 +41,7 @@ export class DeployStack extends Stack {
         resource: 'secret',
         service: 'secretsmanager',
         resourceName: 'GithubPersonalAccessToken*',
+        sep: ':',
       },
       this
     );
