@@ -5,13 +5,13 @@ import * as SecretsManager from 'aws-sdk/clients/secretsmanager';
 
 import { PersonalStack } from '../lib/personal-stack';
 import { DeployStack } from '../lib/deploy-stack';
-import { getSecret } from '../lib/secrets';
+import * as Secrets from '../lib/secrets';
 
 (async function () {
   const app = new Cdk.App();
   const personalStack = new PersonalStack(app, 'PersonalStack');
 
-  const githubSecret: SecretsManager.DescribeSecretResponse = await getSecret(
+  const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret(
     'GithubPersonalAccessToken'
   );
   new DeployStack(app, 'DeployStack', {

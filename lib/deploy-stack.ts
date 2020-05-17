@@ -3,7 +3,7 @@ import * as CodePipeline from '@aws-cdk/aws-codepipeline';
 import * as CodePipelineActions from '@aws-cdk/aws-codepipeline-actions';
 import * as Lambda from '@aws-cdk/aws-lambda';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
-import { App, SecretValue, Stack, StackProps } from '@aws-cdk/core';
+import { App, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
@@ -62,6 +62,7 @@ export class DeployStack extends Stack {
         secretArn: props.GithubSecretArn,
       }
     ).secretValueFromJson('OAuth');
+
     const sourceOutput = new CodePipeline.Artifact();
     const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
@@ -102,8 +103,8 @@ export class DeployStack extends Stack {
           actions: [
             new CodePipelineActions.CloudFormationCreateUpdateStackAction({
               actionName: 'LambdaCfnDeploy',
-              templatePath: cdkBuildOutput.atPath('LambdaStack.template.json'),
-              stackName: 'LambdaStack',
+              templatePath: cdkBuildOutput.atPath('PersonalStack.template.json'),
+              stackName: 'PersonalStack',
               adminPermissions: true,
               parameterOverrides: {
                 ...props.LambdaCode.assign(lambdaBuildOutput.s3Location),
