@@ -3,8 +3,9 @@ import * as CodePipeline from '@aws-cdk/aws-codepipeline';
 import * as CodePipelineActions from '@aws-cdk/aws-codepipeline-actions';
 import * as Iam from '@aws-cdk/aws-iam';
 import * as Lambda from '@aws-cdk/aws-lambda';
+import * as S3 from '@aws-cdk/aws-s3';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
-import { App, Arn, Stack, StackProps } from '@aws-cdk/core';
+import { App, Arn, Duration, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
@@ -87,7 +88,29 @@ export class DeployStack extends Stack {
     const sourceOutput = new CodePipeline.Artifact();
     const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
+    const artifactBucket = new S3.Bucket(this, 'ArtifactBucket', {
+      lifecycleRules: [
+        {
+          enabled: false,
+          expiration: Duration.days(7),
+          prefix: 'CdkBuild',
+        },
+        {
+          enabled: false,
+          expiration: Duration.days(7),
+          prefix: 'Lambda',
+        },
+        {
+          enabled: false,
+          expiration: Duration.days(7),
+          prefix: 'Artifact',
+        },
+      ],
+    });
+
     new CodePipeline.Pipeline(this, 'Pipeline', {
+      artifactBucket,
+      restartExecutionOnUpdate: true,
       stages: [
         {
           stageName: 'Source',
