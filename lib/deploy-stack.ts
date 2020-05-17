@@ -22,7 +22,7 @@ export class DeployStack extends Stack {
           install: {
             commands: 'npm install',
           },
-          test: {
+          build: {
             commands: 'npm run test',
           },
         },
