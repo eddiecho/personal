@@ -120,17 +120,6 @@ export class DeployStack extends Stack {
           ],
         },
         {
-          stageName: 'Self-Mutate',
-          actions: [
-            new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-              actionName: 'CodePipelineDeploy',
-              templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
-              stackName: 'DeployStack',
-              adminPermissions: true,
-            }),
-          ],
-        },
-        {
           stageName: 'Deploy',
           actions: [
             new CodePipelineActions.CloudFormationCreateUpdateStackAction({
@@ -144,6 +133,18 @@ export class DeployStack extends Stack {
                 ...props.LambdaCode.assign(lambdaBuildOutput.s3Location),
               },
               extraInputs: [lambdaBuildOutput],
+            }),
+          ],
+        },
+        {
+          // self mutation prevents changes from being pushed forward if pipeline definition changes
+          stageName: 'Self-Mutate',
+          actions: [
+            new CodePipelineActions.CloudFormationCreateUpdateStackAction({
+              actionName: 'CodePipelineDeploy',
+              templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
+              stackName: 'DeployStack',
+              adminPermissions: true,
             }),
           ],
         },
