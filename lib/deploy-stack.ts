@@ -17,10 +17,8 @@ export class DeployStack extends Stack {
   constructor(app: App, id: string, props: DeployStackProps) {
     super(app, id, props);
 
-    const artifactBucket = this.renderArtifactBucket();
-
     new CodePipeline.Pipeline(this, 'Pipeline', {
-      artifactBucket,
+      artifactBucket: this.renderArtifactBucket(),
       restartExecutionOnUpdate: true,
       stages: this.renderPipelineStages(props),
     });
@@ -125,6 +123,13 @@ export class DeployStack extends Stack {
   private renderPipelineStages = (
     props: DeployStackProps
   ): CodePipeline.StageProps[] => {
+    const cdkBuild = this.renderCdkBuild();
+    const lambdaBuild = this.renderLambdaBuild();
+
+    const sourceOutput = new CodePipeline.Artifact();
+    const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
+    const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
+
     const sourceAuth = SecretsManager.Secret.fromSecretAttributes(
       this,
       'GithubSecret',
@@ -132,12 +137,6 @@ export class DeployStack extends Stack {
         secretArn: props.GithubSecretArn,
       }
     ).secretValueFromJson('OAuth');
-    const cdkBuild = this.renderCdkBuild();
-    const lambdaBuild = this.renderLambdaBuild();
-
-    const sourceOutput = new CodePipeline.Artifact();
-    const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
-    const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
 
     return [
       {
