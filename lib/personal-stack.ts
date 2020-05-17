@@ -21,13 +21,9 @@ export class PersonalStack extends Stack {
       aliasName: 'test',
       version,
     });
-    new CodeDeploy.LambdaDeploymentGroup(
-      this,
-      `${PersonalStack.LAMBDA_NAME}DeploymentGroup`,
-      {
-        alias,
-        deploymentConfig: CodeDeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
-      }
-    );
+    new CodeDeploy.LambdaDeploymentGroup(this, `${PersonalStack.LAMBDA_NAME}DeploymentGroup`, {
+      alias,
+      deploymentConfig: CodeDeploy.LambdaDeploymentConfig.ALL_AT_ONCE,
+    });
   }
 }

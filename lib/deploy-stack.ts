@@ -120,9 +120,7 @@ export class DeployStack extends Stack {
     });
   };
 
-  private renderPipelineStages = (
-    props: DeployStackProps
-  ): CodePipeline.StageProps[] => {
+  private renderPipelineStages = (props: DeployStackProps): CodePipeline.StageProps[] => {
     const cdkBuild = this.renderCdkBuild();
     const lambdaBuild = this.renderLambdaBuild();
 
@@ -130,13 +128,9 @@ export class DeployStack extends Stack {
     const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
 
-    const sourceAuth = SecretsManager.Secret.fromSecretAttributes(
-      this,
-      'GithubSecret',
-      {
-        secretArn: props.GithubSecretArn,
-      }
-    ).secretValueFromJson('OAuth');
+    const sourceAuth = SecretsManager.Secret.fromSecretAttributes(this, 'GithubSecret', {
+      secretArn: props.GithubSecretArn,
+    }).secretValueFromJson('OAuth');
 
     return [
       {

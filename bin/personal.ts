@@ -12,9 +12,7 @@ import * as Secrets from '../lib/secrets';
   const personalStack = new PersonalStack(app, 'PersonalStack');
 
   try {
-    const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret(
-      'GithubPersonalAccessToken'
-    );
+    const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret('GithubPersonalAccessToken');
     new DeployStack(app, 'DeployStack', {
       // overly strict aliasing
       GithubSecretArn: githubSecret.ARN as string,
