@@ -1,12 +1,13 @@
-import { expect, haveResource, MatchStyle } from '@aws-cdk/assert';
-import * as cdk from '@aws-cdk/core';
+import { expect, countResources } from '@aws-cdk/assert';
+import * as Cdk from '@aws-cdk/core';
+
 import * as Personal from '../lib/personal-stack';
 
 describe('Personal Stack', () => {
-  test('Empty Stack', () => {
-    const app = new cdk.App();
+  const app = new Cdk.App();
 
-    const stack = new Personal.PersonalStack(app, 'MyTestStack');
-    expect(stack).to(haveResource('AWS::Lambda::Function'));
+  const stack = new Personal.PersonalStack(app, 'MyTestStack');
+  test('Empty Stack', () => {
+    expect(stack).to(countResources('AWS::Lambda::Function', 1));
   });
 });

@@ -7,16 +7,28 @@ import { PersonalStack } from '../lib/personal-stack';
 import { DeployStack } from '../lib/deploy-stack';
 import * as Secrets from '../lib/secrets';
 
+// not sure if my version of ts or node supports top level await
+// this still works
 (async function () {
   const app = new Cdk.App();
-  const personalStack = new PersonalStack(app, 'PersonalStack');
+  // Stack must be in us-east-1, because ACM certs for
+  // global Cloudfront distributions can only be from IAD
+  const personalStack = new PersonalStack(app, 'PersonalStack', {
+    env: {
+      region: 'us-east-1',
+    },
+  });
 
   try {
+    // created the secret outside of the stack
     const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret('GithubPersonalAccessToken');
     new DeployStack(app, 'DeployStack', {
       // overly strict aliasing
       GithubSecretArn: githubSecret.ARN as string,
       LambdaCode: personalStack.lambdaCode,
+      env: {
+        region: 'us-east-1',
+      },
     });
   } catch (error) {
     throw error;
