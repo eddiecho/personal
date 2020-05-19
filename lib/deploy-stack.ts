@@ -3,14 +3,12 @@ import * as CodePipeline from '@aws-cdk/aws-codepipeline';
 import * as CodePipelineActions from '@aws-cdk/aws-codepipeline-actions';
 import * as Iam from '@aws-cdk/aws-iam';
 import * as Kms from '@aws-cdk/aws-kms';
-import * as Lambda from '@aws-cdk/aws-lambda';
 import * as S3 from '@aws-cdk/aws-s3';
 import * as SecretsManager from '@aws-cdk/aws-secretsmanager';
-import { App, Arn, Duration, Stack, StackProps } from '@aws-cdk/core';
+import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
-  readonly LambdaCode: Lambda.CfnParametersCode;
 }
 
 export class DeployStack extends Stack {
@@ -49,15 +47,12 @@ export class DeployStack extends Stack {
       },
     });
 
-    const githubSecretArn = Arn.format(
-      {
-        resource: 'secret',
-        service: 'secretsmanager',
-        resourceName: 'GithubPersonalAccessToken*',
-        sep: ':',
-      },
-      this
-    );
+    const githubSecretArn = this.formatArn({
+      resource: 'secret',
+      service: 'secretsmanager',
+      resourceName: 'GithubPersonalAccessToken*',
+      sep: ':',
+    });
     const additionalCodeBuildPerms = new Iam.PolicyStatement({
       actions: ['secretsmanager:DescribeSecret'],
       effect: Iam.Effect.ALLOW,
@@ -171,10 +166,6 @@ export class DeployStack extends Stack {
             templatePath: cdkBuildOutput.atPath('PersonalStack.template.json'),
             stackName: 'PersonalStack',
             adminPermissions: true,
-            parameterOverrides: {
-              ...props.LambdaCode.assign(lambdaBuildOutput.s3Location),
-            },
-            extraInputs: [lambdaBuildOutput],
           }),
         ],
       },

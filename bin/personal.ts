@@ -11,21 +11,12 @@ import * as Secrets from '../lib/secrets';
 // this still works
 (async function () {
   const app = new Cdk.App();
-  // Stack must be in us-east-1, because ACM certs for
-  // global Cloudfront distributions can only be from IAD
-  const personalStack = new PersonalStack(app, 'PersonalStack', {
-    env: {
-      region: 'us-east-1',
-    },
-  });
 
   try {
     // created the secret outside of the stack
     const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret('GithubPersonalAccessToken');
     new DeployStack(app, 'DeployStack', {
-      // overly strict aliasing
       GithubSecretArn: githubSecret.ARN as string,
-      LambdaCode: personalStack.lambdaCode,
       env: {
         region: 'us-east-1',
       },
@@ -33,6 +24,15 @@ import * as Secrets from '../lib/secrets';
   } catch (error) {
     throw error;
   }
+
+  // Stack must be in us-east-1, because ACM certs for
+  // global Cloudfront distributions can only be from IAD
+  const personalStack = new PersonalStack(app, 'PersonalStack', {
+    env: {
+      account: '609842208353',
+      region: 'us-east-1',
+    },
+  });
 
   app.synth();
 })();

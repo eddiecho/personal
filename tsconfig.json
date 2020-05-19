@@ -20,5 +20,5 @@
     "typeRoots": ["./node_modules/@types"],
     "outDir": "./build"
   },
-  "exclude": ["cdk.out", "build"]
+  "exclude": ["cdk.out", "build", "test"]
 }

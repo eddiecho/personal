@@ -16,8 +16,8 @@ export class StaticSite extends Construct {
   constructor(parent: Construct, name: string, props: StaticSiteProps) {
     super(parent, name);
 
-    const domain = `${props.siteSubDomain}.${props.domainName}`
-    const wildcardDomain = `*.${props.domainName}`
+    const domain = `${props.siteSubDomain}.${props.domainName}`;
+    const wildcardDomain = `*.${props.domainName}`;
     const hostedZone = Route53.HostedZone.fromLookup(this, 'HostedZone', { domainName: props.domainName });
 
     const siteBucket = new S3.Bucket(this, 'SiteBucket', {
