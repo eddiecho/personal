@@ -37,7 +37,7 @@ export class DeployStack extends Stack {
             commands: ['npm run test'],
           },
           build: {
-            commands: [`cdk deploy ${stackName}`],
+            commands: [`npm run cdk deploy ${stackName} -- --require-approval never`],
           },
         },
       }),
@@ -135,6 +135,17 @@ export class DeployStack extends Stack {
         ],
       },
       {
+        stageName: 'Self-Mutate',
+        actions: [
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'SelfMutate',
+            project: this.renderStackDeploy('DeployStack'),
+            input: sourceOutput,
+            outputs: [],
+          }),
+        ],
+      },
+      {
         stageName: 'Build',
         actions: [
           new CodePipelineActions.CodeBuildAction({
@@ -151,18 +162,6 @@ export class DeployStack extends Stack {
           new CodePipelineActions.CodeBuildAction({
             actionName: 'StackDeploy',
             project: this.renderStackDeploy('PersonalStack'),
-            input: sourceOutput,
-            outputs: [],
-          }),
-        ],
-      },
-      {
-        // self mutation prevents changes from being pushed forward if pipeline definition changes
-        stageName: 'Self-Mutate',
-        actions: [
-          new CodePipelineActions.CodeBuildAction({
-            actionName: 'SelfMutate',
-            project: this.renderStackDeploy('DeployStack'),
             input: sourceOutput,
             outputs: [],
           }),
