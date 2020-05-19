@@ -22,45 +22,40 @@ export class DeployStack extends Stack {
     });
   }
 
-  private renderCdkBuild = (): CodeBuild.PipelineProject => {
-    const cdkBuild = new CodeBuild.PipelineProject(this, 'CdkBuild', {
+  private renderStackDeploy = (stackName: string): CodeBuild.PipelineProject => {
+    // I have no idea how to set up PersonalStack with CFN, since it uses the
+    // DNSValidatedCert, which requires assets managed by CDK
+    // Because of this, just use CodeBuild instead of CFN directly.
+    const project = new CodeBuild.PipelineProject(this, `${stackName}Deploy`, {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
         phases: {
           install: {
-            commands: 'npm install',
+            commands: ['npm install'],
           },
           pre_build: {
-            commands: 'npm run test',
+            commands: ['npm run test'],
           },
           build: {
-            commands: ['npm run build', 'npm run cdk synth -- -o dist'],
+            commands: [`cdk deploy ${stackName}`],
           },
-        },
-        artifacts: {
-          'base-directory': 'dist',
-          files: ['PersonalStack.template.json', 'DeployStack.template.json'],
         },
       }),
       environment: {
-        buildImage: CodeBuild.LinuxBuildImage.STANDARD_2_0,
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_3_0,
       },
     });
 
-    const githubSecretArn = this.formatArn({
-      resource: 'secret',
-      service: 'secretsmanager',
-      resourceName: 'GithubPersonalAccessToken*',
-      sep: ':',
-    });
-    const additionalCodeBuildPerms = new Iam.PolicyStatement({
-      actions: ['secretsmanager:DescribeSecret'],
-      effect: Iam.Effect.ALLOW,
-      resources: [githubSecretArn],
-    });
-    cdkBuild.addToRolePolicy(additionalCodeBuildPerms);
+    // I'm going to give CFN admin perms anyway
+    // Yes, it's bad practice, but it's way too annoying
+    // trying to enumerate all the things you create
+    // Especially hard since CDK creates some random stuff I don't know about
+    const policy = new Iam.PolicyStatement();
+    policy.addActions('*');
+    policy.addResources('*');
+    project.addToRolePolicy(policy);
 
-    return cdkBuild;
+    return project;
   };
 
   private renderLambdaBuild = (): CodeBuild.PipelineProject => {
@@ -81,7 +76,7 @@ export class DeployStack extends Stack {
         },
       }),
       environment: {
-        buildImage: CodeBuild.LinuxBuildImage.STANDARD_2_0,
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_3_0,
       },
     });
   };
@@ -116,11 +111,9 @@ export class DeployStack extends Stack {
   };
 
   private renderPipelineStages = (props: DeployStackProps): CodePipeline.StageProps[] => {
-    const cdkBuild = this.renderCdkBuild();
     const lambdaBuild = this.renderLambdaBuild();
 
     const sourceOutput = new CodePipeline.Artifact();
-    const cdkBuildOutput = new CodePipeline.Artifact('CdkBuildOutput');
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
 
     const sourceAuth = SecretsManager.Secret.fromSecretAttributes(this, 'GithubSecret', {
@@ -150,22 +143,16 @@ export class DeployStack extends Stack {
             input: sourceOutput,
             outputs: [lambdaBuildOutput],
           }),
-          new CodePipelineActions.CodeBuildAction({
-            actionName: 'CDKBuild',
-            project: cdkBuild,
-            input: sourceOutput,
-            outputs: [cdkBuildOutput],
-          }),
         ],
       },
       {
         stageName: 'Deploy',
         actions: [
-          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-            actionName: 'LambdaCfnDeploy',
-            templatePath: cdkBuildOutput.atPath('PersonalStack.template.json'),
-            stackName: 'PersonalStack',
-            adminPermissions: true,
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'StackDeploy',
+            project: this.renderStackDeploy('PersonalStack'),
+            input: sourceOutput,
+            outputs: [],
           }),
         ],
       },
@@ -173,11 +160,11 @@ export class DeployStack extends Stack {
         // self mutation prevents changes from being pushed forward if pipeline definition changes
         stageName: 'Self-Mutate',
         actions: [
-          new CodePipelineActions.CloudFormationCreateUpdateStackAction({
-            actionName: 'CodePipelineDeploy',
-            templatePath: cdkBuildOutput.atPath('DeployStack.template.json'),
-            stackName: 'DeployStack',
-            adminPermissions: true,
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'SelfMutate',
+            project: this.renderStackDeploy('DeployStack'),
+            input: sourceOutput,
+            outputs: [],
           }),
         ],
       },
