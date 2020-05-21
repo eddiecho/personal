@@ -12,15 +12,36 @@ export interface DeployStackProps extends StackProps {
 }
 
 export class DeployStack extends Stack {
+  private props: DeployStackProps;
+  private cdkRole: Iam.Role;
+
   constructor(app: App, id: string, props: DeployStackProps) {
     super(app, id, props);
+
+    this.props = props;
+    this.cdkRole = this.renderStackDeployRole();
 
     new CodePipeline.Pipeline(this, 'Pipeline', {
       artifactBucket: this.renderArtifactBucket(),
       restartExecutionOnUpdate: true,
-      stages: this.renderPipelineStages(props),
+      stages: this.renderPipelineStages(),
     });
   }
+
+  private renderStackDeployRole = (): Iam.Role => {
+    const policy = new Iam.PolicyStatement();
+    policy.addActions('*');
+    policy.addResources('*');
+    // I'm going to give CFN admin perms anyway
+    // Yes, it's bad practice, but it's way too annoying
+    // trying to enumerate all the things you create
+    // Especially hard since CDK creates some random stuff I don't know about
+    const role = new Iam.Role(this, 'CdkCodeBuildRole', {
+      assumedBy: new Iam.ServicePrincipal('cloudformation.amazonaws.com'),
+    });
+    role.addToPolicy(policy);
+    return role;
+  };
 
   private renderStackDeploy = (stackName: string): CodeBuild.PipelineProject => {
     // I have no idea how to set up PersonalStack with CFN, since it uses the
@@ -37,7 +58,9 @@ export class DeployStack extends Stack {
             commands: ['npm run test'],
           },
           build: {
-            commands: [`npm run cdk deploy ${stackName} -- --require-approval never`],
+            commands: [
+              `npm run cdk deploy ${stackName} -- --require-approval never -r ${this.cdkRole.roleArn}`,
+            ],
           },
         },
       }),
@@ -46,15 +69,17 @@ export class DeployStack extends Stack {
       },
     });
 
-    // I'm going to give CFN admin perms anyway
-    // Yes, it's bad practice, but it's way too annoying
-    // trying to enumerate all the things you create
-    // Especially hard since CDK creates some random stuff I don't know about
     const policy = new Iam.PolicyStatement();
-    policy.addActions('*');
+    policy.addActions('secretsmanager:DescribeSecret');
+    policy.addResources(this.props.GithubSecretArn);
+    policy.addActions('cloudformation:*');
     policy.addResources('*');
-    project.addToRolePolicy(policy);
+    policy.addActions('s3:*');
+    policy.addResources('arn:aws:s3:::cdktoolkit-stagingbucket-*');
+    policy.addActions('iam:PassRole');
+    policy.addResources(this.cdkRole.roleArn);
 
+    project.addToRolePolicy(policy);
     return project;
   };
 
@@ -110,14 +135,14 @@ export class DeployStack extends Stack {
     });
   };
 
-  private renderPipelineStages = (props: DeployStackProps): CodePipeline.StageProps[] => {
+  private renderPipelineStages = (): CodePipeline.StageProps[] => {
     const lambdaBuild = this.renderLambdaBuild();
 
     const sourceOutput = new CodePipeline.Artifact();
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
 
     const sourceAuth = SecretsManager.Secret.fromSecretAttributes(this, 'GithubSecret', {
-      secretArn: props.GithubSecretArn,
+      secretArn: this.props.GithubSecretArn,
     }).secretValueFromJson('OAuth');
 
     return [
