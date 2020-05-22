@@ -9,7 +9,7 @@ import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
-  readonly StaticAssetsBucket: S3.IBucket;
+  readonly StaticAssetsBucket: string;
 }
 
 export class DeployStack extends Stack {
@@ -232,7 +232,7 @@ export class DeployStack extends Stack {
         actions: [
           new CodePipelineActions.S3DeployAction({
             actionName: 'UploadStaticAssets',
-            bucket: this.props.StaticAssetsBucket,
+            bucket: S3.Bucket.fromBucketName(this, 'StaticAssetsBucket', this.props.StaticAssetsBucket),
             input: reactBuildOutput,
           }),
         ],

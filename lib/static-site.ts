@@ -13,7 +13,7 @@ export interface StaticSiteProps {
 }
 
 export class StaticSite extends Construct {
-  public bucket: S3.IBucket;
+  public bucket: string;
 
   constructor(parent: Construct, name: string, props: StaticSiteProps) {
     super(parent, name);
@@ -22,12 +22,13 @@ export class StaticSite extends Construct {
     const wildcardDomain = `*.${props.domainName}`;
     const hostedZone = Route53.HostedZone.fromLookup(this, 'HostedZone', { domainName: props.domainName });
 
-    this.bucket = new S3.Bucket(this, 'SiteBucket', {
+    const bucket = new S3.Bucket(this, 'SiteBucket', {
       bucketName: 'personal-stack-site-bucket-609842208353',
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'error.html',
       blockPublicAccess: S3.BlockPublicAccess.BLOCK_ALL,
     });
+    this.bucket = bucket.bucketName;
 
     const certificateArn = new Acm.DnsValidatedCertificate(this, 'SiteCertificate', {
       hostedZone,
@@ -48,7 +49,7 @@ export class StaticSite extends Construct {
       originConfigs: [
         {
           s3OriginSource: {
-            s3BucketSource: this.bucket,
+            s3BucketSource: bucket,
             originAccessIdentity: siteOriginAccessIdentity,
           },
           behaviors: [{ isDefaultBehavior: true }],

@@ -4,7 +4,7 @@ import * as S3 from '@aws-cdk/aws-s3';
 import { StaticSite } from './static-site';
 
 export class PersonalStack extends Stack {
-  public staticAssetsBucket: S3.IBucket;
+  public staticAssetsBucket: string;
 
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
