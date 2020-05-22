@@ -9,6 +9,7 @@ import { App, Duration, Stack, StackProps } from '@aws-cdk/core';
 
 export interface DeployStackProps extends StackProps {
   readonly GithubSecretArn: string;
+  readonly StaticAssetsBucket: S3.IBucket;
 }
 
 export class DeployStack extends Stack {
@@ -63,7 +64,7 @@ export class DeployStack extends Stack {
         },
       }),
       environment: {
-        buildImage: CodeBuild.LinuxBuildImage.STANDARD_3_0,
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_4_0,
       },
     });
 
@@ -99,7 +100,7 @@ export class DeployStack extends Stack {
         },
       }),
       environment: {
-        buildImage: CodeBuild.LinuxBuildImage.STANDARD_3_0,
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_4_0,
       },
     });
   };
@@ -110,6 +111,7 @@ export class DeployStack extends Stack {
     });
 
     return new S3.Bucket(this, 'ArtifactBucket', {
+      bucketName: 'pipeline-artifact-bucket-609842208353',
       blockPublicAccess: S3.BlockPublicAccess.BLOCK_ALL,
       encryption: S3.BucketEncryption.KMS,
       encryptionKey: artifactBucketKey,
@@ -133,11 +135,35 @@ export class DeployStack extends Stack {
     });
   };
 
+  private renderReactApp = (): CodeBuild.PipelineProject => {
+    return new CodeBuild.PipelineProject(this, 'ReactAppBuild', {
+      buildSpec: CodeBuild.BuildSpec.fromObject({
+        version: '0.2',
+        phases: {
+          install: {
+            commands: ['cd site'],
+          },
+          build: {
+            commands: 'ls', // TODO - fix after adding react
+          },
+        },
+        artifacts: {
+          'base-directory': 'site',
+          files: ['index.html'],
+        },
+      }),
+      environment: {
+        buildImage: CodeBuild.LinuxBuildImage.STANDARD_4_0,
+      },
+    });
+  };
+
   private renderPipelineStages = (): CodePipeline.StageProps[] => {
     const lambdaBuild = this.renderLambdaBuild();
 
     const sourceOutput = new CodePipeline.Artifact();
     const lambdaBuildOutput = new CodePipeline.Artifact('LambdaBuildOutput');
+    const reactBuildOutput = new CodePipeline.Artifact('ReactBuildOutput');
 
     const sourceAuth = SecretsManager.Secret.fromSecretAttributes(this, 'GithubSecret', {
       secretArn: this.props.GithubSecretArn,
@@ -180,13 +206,34 @@ export class DeployStack extends Stack {
         ],
       },
       {
-        stageName: 'Deploy',
+        stageName: 'DeployPersonalStack',
         actions: [
           new CodePipelineActions.CodeBuildAction({
             actionName: 'StackDeploy',
             project: this.renderStackDeploy('PersonalStack'),
             input: sourceOutput,
             outputs: [],
+          }),
+        ],
+      },
+      {
+        stageName: 'CompileReactApp',
+        actions: [
+          new CodePipelineActions.CodeBuildAction({
+            actionName: 'CompileReactApp',
+            project: this.renderReactApp(),
+            input: sourceOutput,
+            outputs: [reactBuildOutput],
+          }),
+        ],
+      },
+      {
+        stageName: 'UploadStaticAssets',
+        actions: [
+          new CodePipelineActions.S3DeployAction({
+            actionName: 'UploadStaticAssets',
+            bucket: this.props.StaticAssetsBucket,
+            input: reactBuildOutput,
           }),
         ],
       },

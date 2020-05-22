@@ -12,19 +12,6 @@ import * as Secrets from '../lib/secrets';
 (async function () {
   const app = new Cdk.App();
 
-  try {
-    // created the secret outside of the stack
-    const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret('GithubPersonalAccessToken');
-    new DeployStack(app, 'DeployStack', {
-      GithubSecretArn: githubSecret.ARN as string,
-      env: {
-        region: 'us-east-1',
-      },
-    });
-  } catch (error) {
-    throw error;
-  }
-
   // Stack must be in us-east-1, because ACM certs for
   // global Cloudfront distributions can only be from IAD
   const personalStack = new PersonalStack(app, 'PersonalStack', {
@@ -33,6 +20,20 @@ import * as Secrets from '../lib/secrets';
       region: 'us-east-1',
     },
   });
+
+  try {
+    // created the secret outside of the stack
+    const githubSecret: SecretsManager.DescribeSecretResponse = await Secrets.getSecret('GithubPersonalAccessToken');
+    new DeployStack(app, 'DeployStack', {
+      GithubSecretArn: githubSecret.ARN as string,
+      StaticAssetsBucket: personalStack.staticAssetsBucket,
+      env: {
+        region: 'us-east-1',
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
 
   app.synth();
 })();
