@@ -23,13 +23,17 @@ export class StaticSite extends Construct {
     const siteBucket = new S3.Bucket(this, 'SiteBucket', {
       websiteIndexDocument: 'index.html',
       websiteErrorDocument: 'error.html',
-      publicReadAccess: false,
+      blockPublicAccess: S3.BlockPublicAccess.BLOCK_ALL,
     });
 
     const certificateArn = new Acm.DnsValidatedCertificate(this, 'SiteCertificate', {
       hostedZone,
       domainName: wildcardDomain,
     }).certificateArn;
+
+    const siteOriginAccessIdentity = new Cloudfront.OriginAccessIdentity(this, 'SiteAccessIdentity', {
+      comment: 'Site OAI',
+    });
 
     const distribution = new Cloudfront.CloudFrontWebDistribution(this, 'SiteDistribution', {
       aliasConfiguration: {
@@ -42,6 +46,7 @@ export class StaticSite extends Construct {
         {
           s3OriginSource: {
             s3BucketSource: siteBucket,
+            originAccessIdentity: siteOriginAccessIdentity,
           },
           behaviors: [{ isDefaultBehavior: true }],
         },

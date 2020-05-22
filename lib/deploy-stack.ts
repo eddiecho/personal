@@ -58,9 +58,7 @@ export class DeployStack extends Stack {
             commands: ['npm run test'],
           },
           build: {
-            commands: [
-              `npm run cdk deploy ${stackName} -- --require-approval never -r ${this.cdkRole.roleArn}`,
-            ],
+            commands: [`npm run cdk deploy ${stackName} -- --require-approval never -r ${this.cdkRole.roleArn}`],
           },
         },
       }),
