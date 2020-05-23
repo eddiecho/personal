@@ -15,12 +15,17 @@ export interface StaticSiteProps {
 export class StaticSite extends Construct {
   public bucket: string;
 
+  private props: StaticSiteProps;
+  private hostedZone: Route53.IHostedZone;
+
   constructor(parent: Construct, name: string, props: StaticSiteProps) {
     super(parent, name);
 
+    this.props = props;
+
     const domain = `${props.siteSubDomain}.${props.domainName}`;
     const wildcardDomain = `*.${props.domainName}`;
-    const hostedZone = Route53.HostedZone.fromLookup(this, 'HostedZone', { domainName: props.domainName });
+    this.hostedZone = Route53.HostedZone.fromLookup(this, 'HostedZone', { domainName: props.domainName });
 
     const bucket = new S3.Bucket(this, 'SiteBucket', {
       bucketName: 'personal-stack-site-bucket-609842208353',
@@ -31,7 +36,7 @@ export class StaticSite extends Construct {
     this.bucket = bucket.bucketName;
 
     const certificateArn = new Acm.DnsValidatedCertificate(this, 'SiteCertificate', {
-      hostedZone,
+      hostedZone: this.hostedZone,
       domainName: wildcardDomain,
     }).certificateArn;
 
@@ -60,7 +65,46 @@ export class StaticSite extends Construct {
     new Route53.ARecord(this, 'SiteAliasRecord', {
       recordName: domain,
       target: Route53.RecordTarget.fromAlias(new Route53Targets.CloudFrontTarget(distribution)),
-      zone: hostedZone,
+      zone: this.hostedZone,
     });
+
+    this.renderNakedDomainRedirect();
   }
+
+  private renderNakedDomainRedirect = () => {
+    const redirectBucket: S3.Bucket = new S3.Bucket(this, 'NakedRedirectBucket', {
+      websiteRedirect: {
+        protocol: S3.RedirectProtocol.HTTPS,
+        hostName: `www.${this.props.domainName}`,
+      },
+    });
+
+    const redirectCert = new Acm.DnsValidatedCertificate(this, 'NakedRedirectCertificate', {
+      hostedZone: this.hostedZone,
+      domainName: this.props.domainName,
+    });
+
+    const redirectDistribution = new Cloudfront.CloudFrontWebDistribution(this, 'RedirectDistribution', {
+      aliasConfiguration: {
+        acmCertRef: redirectCert.certificateArn,
+        names: [this.props.domainName],
+        sslMethod: Cloudfront.SSLMethod.SNI,
+        securityPolicy: Cloudfront.SecurityPolicyProtocol.TLS_V1_2_2018,
+      },
+      originConfigs: [
+        {
+          customOriginSource: {
+            domainName: redirectBucket.bucketWebsiteDomainName,
+          },
+          behaviors: [{isDefaultBehavior: true}],
+        },
+      ],
+    });
+
+    new Route53.ARecord(this, 'RedirectAliasRecord', {
+      recordName: this.props.domainName,
+      target: Route53.RecordTarget.fromAlias(new Route53Targets.CloudFrontTarget(redirectDistribution)),
+      zone: this.hostedZone,
+    });
+  };
 }
