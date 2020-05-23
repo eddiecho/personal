@@ -141,15 +141,18 @@ export class DeployStack extends Stack {
         version: '0.2',
         phases: {
           install: {
-            commands: ['cd site'],
+            commands: ['cd site', 'npm install'],
+          },
+          pre_build: {
+            commands: ['npm run test'],
           },
           build: {
-            commands: 'ls', // TODO - fix after adding react
+            commands: ['npm run build'],
           },
         },
         artifacts: {
-          'base-directory': 'site',
-          files: ['index.html'],
+          'base-directory': 'site/build',
+          files: ['**/*'],
         },
       }),
       environment: {
