@@ -53,10 +53,10 @@ export class DeployStack extends Stack {
         version: '0.2',
         phases: {
           install: {
-            commands: ['npm install'],
+            commands: ['cd cdk', 'npm install'],
           },
           pre_build: {
-            commands: ['npm run test'],
+            commands: ['npm run release'],
           },
           build: {
             commands: [`npm run cdk deploy ${stackName} -- --require-approval never -r ${this.cdkRole.roleArn}`],
