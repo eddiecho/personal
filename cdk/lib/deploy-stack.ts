@@ -187,7 +187,7 @@ export class DeployStack extends Stack {
         ],
       },
       {
-        stageName: 'Self-Mutate',
+        stageName: 'SelfMutate',
         actions: [
           new CodePipelineActions.CodeBuildAction({
             actionName: 'SelfMutate',
