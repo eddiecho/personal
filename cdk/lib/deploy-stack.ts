@@ -48,6 +48,7 @@ export class DeployStack extends Stack {
     // I have no idea how to set up PersonalStack with CFN, since it uses the
     // DNSValidatedCert, which requires assets managed by CDK
     // Because of this, just use CodeBuild instead of CFN directly.
+    // TODO - remove DNSValidatedCert, use CFN directly so I can remove this trash
     const project = new CodeBuild.PipelineProject(this, `${stackName}Deploy`, {
       buildSpec: CodeBuild.BuildSpec.fromObject({
         version: '0.2',
