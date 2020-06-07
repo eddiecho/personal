@@ -96,7 +96,7 @@ export class StaticSite extends Construct {
           customOriginSource: {
             domainName: redirectBucket.bucketWebsiteDomainName,
           },
-          behaviors: [{isDefaultBehavior: true}],
+          behaviors: [{ isDefaultBehavior: true }],
         },
       ],
     });
