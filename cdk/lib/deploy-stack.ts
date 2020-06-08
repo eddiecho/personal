@@ -199,7 +199,7 @@ export class DeployStack extends Stack {
         ],
       },
       {
-        stageName: 'Build',
+        stageName: 'CompileBackend',
         actions: [
           new CodePipelineActions.CodeBuildAction({
             actionName: 'LambdaBuild',
