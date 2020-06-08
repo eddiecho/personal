@@ -2,5 +2,6 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+describe('<App />', () => {
+  it("look, it doesn't do anything, it just displays text and I copied it from CRA", () => {});
 });
