@@ -39,7 +39,7 @@
     "@aws-cdk/aws-s3-deployment": "^1.39.0",
     "@aws-cdk/aws-secretsmanager": "^1.39.0",
     "@aws-cdk/core": "^1.39.0",
-    "aws-sdk": "^2.678.0",
+    "aws-sdk": "^2.814.0",
     "source-map-support": "^0.5.16"
   }
 }
